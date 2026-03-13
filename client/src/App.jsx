@@ -1,121 +1,94 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import useAuthStore from "./store/useAuthStore.js";
+import ProtectedRoute from "./components/shared/ProtectedRoute.jsx";
+import Spinner from "./components/shared/Spinner.jsx";
 
-function App() {
-  const [count, setCount] = useState(0)
+// pages
+import LandingPage from "./pages/LandingPage.jsx";
+import Login from "./pages/auth/Login.jsx";
+import Register from "./pages/auth/Register.jsx";
+import SearchRides from "./pages/passenger/SearchRides.jsx";
+import RideDetails from "./pages/passenger/RideDetails.jsx";
+import MyBookings from "./pages/passenger/MyBookings.jsx";
+import PostRide from "./pages/driver/PostRide.jsx";
+import MyRides from "./pages/driver/MyRides.jsx";
+import DriverOnboarding from "./pages/driver/DriverOnboarding.jsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+// root layout — runs getMe once on app load
+const RootLayout = () => {
+  const { getMe, initialized } = useAuthStore();
 
-      <div className="ticks"></div>
+  useEffect(() => {
+    getMe();
+  }, []);
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  if (!initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
-}
+  return <Outlet />;
+};
 
-export default App
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      // public routes
+      { path: "/", element: <LandingPage /> },
+      { path: "/login", element: <Login /> },
+      { path: "/register", element: <Register /> },
+      { path: "/search", element: <SearchRides /> },
+      { path: "/rides/:id", element: <RideDetails /> },
+
+      // passenger only
+      {
+        element: <ProtectedRoute allowedRoles={["passenger"]} />,
+        children: [
+          { path: "/my-bookings", element: <MyBookings /> },
+        ],
+      },
+
+      // driver only
+      {
+        element: <ProtectedRoute allowedRoles={["driver"]} />,
+        children: [
+          { path: "/post-ride", element: <PostRide /> },
+          { path: "/my-rides", element: <MyRides /> },
+          { path: "/onboarding", element: <DriverOnboarding /> },
+        ],
+      },
+
+      // admin only
+      {
+        element: <ProtectedRoute allowedRoles={["admin"]} />,
+        children: [
+          { path: "/admin", element: <AdminDashboard /> },
+        ],
+      },
+
+      // 404 fallback
+      {
+        path: "*",
+        element: (
+          <div className="min-h-screen flex flex-col items-center justify-center text-gray-500">
+            <p className="text-6xl font-bold text-primary-600 mb-4">404</p>
+            <p className="text-lg font-medium">Page not found</p>
+            <a href="/" className="mt-4 text-primary-600 hover:underline text-sm">
+              Go back home
+            </a>
+          </div>
+        ),
+      },
+    ],
+  },
+]);
+
+const App = () => <RouterProvider router={router} />;
+
+export default App;
