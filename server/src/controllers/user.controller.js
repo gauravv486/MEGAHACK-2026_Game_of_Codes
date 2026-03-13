@@ -29,12 +29,18 @@ export const driverOnboarding = async (req, res) => {
       licenseNumber, preferences,
     } = req.body;
 
+    // safely parse preferences — could be undefined, a string, or already an object
+    let parsedPrefs = {};
+    if (preferences) {
+      parsedPrefs = typeof preferences === "string" ? JSON.parse(preferences) : preferences;
+    }
+
     const profile = await DriverProfile.findOneAndUpdate(
       { userId: req.user._id },
       {
         vehicle: { make, model, color, year, registrationNumber, totalSeats },
         licenseNumber,
-        preferences: preferences ? JSON.parse(preferences) : {},
+        preferences: parsedPrefs,
         verificationStatus: "pending",
       },
       { new: true, upsert: true }

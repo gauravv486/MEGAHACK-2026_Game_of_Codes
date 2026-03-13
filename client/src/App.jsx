@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import useAuthStore from "./store/useAuthStore.js";
 import ProtectedRoute from "./components/shared/ProtectedRoute.jsx";
 import Spinner from "./components/shared/Spinner.jsx";
+import Toast from "./components/shared/Toast.jsx";
 
 // pages
 import LandingPage from "./pages/LandingPage.jsx";
@@ -16,45 +17,39 @@ import MyRides from "./pages/driver/MyRides.jsx";
 import DriverOnboarding from "./pages/driver/DriverOnboarding.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 
-// root layout — runs getMe once on app load
 const RootLayout = () => {
   const { getMe, initialized } = useAuthStore();
-
-  useEffect(() => {
-    getMe();
-  }, []);
+  useEffect(() => { getMe(); }, []);
 
   if (!initialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#fffef5" }}>
         <Spinner size="lg" />
       </div>
     );
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <Toast />
+      <Outlet />
+    </>
+  );
 };
 
 const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
-      // public routes
       { path: "/", element: <LandingPage /> },
       { path: "/login", element: <Login /> },
       { path: "/register", element: <Register /> },
       { path: "/search", element: <SearchRides /> },
       { path: "/rides/:id", element: <RideDetails /> },
-
-      // passenger only
       {
         element: <ProtectedRoute allowedRoles={["passenger"]} />,
-        children: [
-          { path: "/my-bookings", element: <MyBookings /> },
-        ],
+        children: [{ path: "/my-bookings", element: <MyBookings /> }],
       },
-
-      // driver only
       {
         element: <ProtectedRoute allowedRoles={["driver"]} />,
         children: [
@@ -63,25 +58,18 @@ const router = createBrowserRouter([
           { path: "/onboarding", element: <DriverOnboarding /> },
         ],
       },
-
-      // admin only
       {
         element: <ProtectedRoute allowedRoles={["admin"]} />,
-        children: [
-          { path: "/admin", element: <AdminDashboard /> },
-        ],
+        children: [{ path: "/admin", element: <AdminDashboard /> }],
       },
-
-      // 404 fallback
       {
         path: "*",
         element: (
-          <div className="min-h-screen flex flex-col items-center justify-center text-gray-500">
-            <p className="text-6xl font-bold text-primary-600 mb-4">404</p>
-            <p className="text-lg font-medium">Page not found</p>
-            <a href="/" className="mt-4 text-primary-600 hover:underline text-sm">
-              Go back home
-            </a>
+          <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "#fffef5" }}>
+            <p className="text-9xl font-black mb-4" style={{ color: "#ffe156", WebkitTextStroke: "3px #1a1a1a" }}>404</p>
+            <p className="text-xl font-black mb-1">PAGE NOT FOUND</p>
+            <p className="text-sm text-gray-500 mb-6">The page you're looking for doesn't exist.</p>
+            <a href="/" className="btn-primary">Go Home</a>
           </div>
         ),
       },

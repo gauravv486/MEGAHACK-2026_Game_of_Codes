@@ -1,28 +1,20 @@
-import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
-import multer from "multer";
+// Cloudinary is optional — only configure if real keys are provided
+let cloudinaryConfigured = false;
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const initCloudinary = () => {
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
 
-const avatarStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "rideshare/avatars",
-    allowed_formats: ["jpg", "png", "jpeg"],
-  },
-});
+  if (
+    CLOUDINARY_CLOUD_NAME &&
+    CLOUDINARY_API_KEY &&
+    CLOUDINARY_API_SECRET &&
+    !CLOUDINARY_CLOUD_NAME.startsWith("your_")
+  ) {
+    cloudinaryConfigured = true;
+    console.log("Cloudinary configured.");
+  } else {
+    console.log("Cloudinary not configured — using placeholder keys. Image uploads disabled.");
+  }
+};
 
-const documentStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "rideshare/documents",
-    allowed_formats: ["jpg", "png", "jpeg", "pdf"],
-  },
-});
-
-export const uploadAvatar = multer({ storage: avatarStorage });
-export const uploadDocument = multer({ storage: documentStorage });
+export { initCloudinary, cloudinaryConfigured };

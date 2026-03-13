@@ -1,8 +1,9 @@
 const Spinner = ({ size = "md" }) => {
-  const sizes = { sm: "h-4 w-4", md: "h-8 w-8", lg: "h-12 w-12" };
+  const sizes = { sm: "w-6 h-6", md: "w-10 h-10", lg: "w-14 h-14" };
   return (
-    <div className="flex justify-center items-center">
-      <div className={`${sizes[size]} animate-spin rounded-full border-4 border-gray-200 border-t-primary-600`} />
+    <div className="flex items-center justify-center">
+      <div className={`${sizes[size]} animate-spin`}
+        style={{ border: "4px solid #e5e5e5", borderTop: "4px solid #1a1a1a" }} />
     </div>
   );
 };
