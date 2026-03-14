@@ -5,10 +5,109 @@ import LiveTrackingDemo from "../components/shared/LiveTrackingDemo.jsx";
 import { CarIllustration, SearchIllustration, BookIllustration, TravelIllustration, HeroScene, PersonGirl, PersonGuy, PersonWaving } from "../components/shared/FlatIllustrations.jsx";
 import useAuthStore from "../store/useAuthStore.js";
 
+/* ─── Inline Subscription Pay Modal ──────────── */
+const SubPayModal = ({ plan, onClose }) => {
+  const [card, setCard] = useState({ number: "", expiry: "", cvv: "", name: "" });
+  const [processing, setProcessing] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const fmt = (v) => v.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
+  const fmtExp = (v) => { const d = v.replace(/\D/g, "").slice(0, 4); return d.length >= 3 ? d.slice(0, 2) + "/" + d.slice(2) : d; };
+
+  const pay = async () => { setProcessing(true); await new Promise((r) => setTimeout(r, 2200)); setDone(true); };
+
+  if (done) {
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+        <div className="w-full max-w-sm animate-fade-up" style={{ background: "#b8f3b0", border: "3px solid #1a1a1a", boxShadow: "8px 8px 0 #1a1a1a", padding: "40px 30px" }}>
+          <div className="text-center">
+            <div className="mx-auto mb-4 w-20 h-20 flex items-center justify-center"
+              style={{ background: "#fff", border: "3px solid #1a1a1a", boxShadow: "4px 4px 0 #1a1a1a" }}>
+              <span style={{ fontSize: "32px", color: "#2e7d32", fontWeight: 900 }}>OK</span>
+            </div>
+            <h2 className="text-2xl font-black mb-1">PAYMENT DONE!</h2>
+            <p className="text-sm font-bold text-gray-600 mb-3">Subscription activated</p>
+            <div className="space-y-2 mb-5">
+              <div className="flex justify-between p-2" style={{ background: "#fff", border: "2px solid #1a1a1a" }}>
+                <span className="text-xs font-bold uppercase text-gray-500">Plan</span>
+                <span className="font-black">{plan.name}</span>
+              </div>
+              <div className="flex justify-between p-2" style={{ background: "#fff", border: "2px solid #1a1a1a" }}>
+                <span className="text-xs font-bold uppercase text-gray-500">Amount</span>
+                <span className="font-black">INR {plan.price}/mo</span>
+              </div>
+              <div className="flex justify-between p-2" style={{ background: "#fff", border: "2px solid #1a1a1a" }}>
+                <span className="text-xs font-bold uppercase text-gray-500">Status</span>
+                <span className="font-black" style={{ color: "#2e7d32" }}>ACTIVE</span>
+              </div>
+            </div>
+            <button onClick={onClose} className="btn-primary w-full" style={{ background: "#1a1a1a", color: "#b8f3b0" }}>Done</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+      <div className="w-full max-w-sm animate-fade-up" style={{ background: "#fffef5", border: "3px solid #1a1a1a", boxShadow: "8px 8px 0 #1a1a1a" }}>
+        <div className="p-5" style={{ background: "#635BFF", borderBottom: "3px solid #1a1a1a" }}>
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 flex items-center justify-center font-black text-white text-xs" style={{ background: "rgba(255,255,255,0.2)", border: "2px solid rgba(255,255,255,0.3)" }}>S</div>
+              <span className="text-white font-black text-xs uppercase tracking-wider">Stripe Demo</span>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white font-black text-lg cursor-pointer">X</button>
+          </div>
+          <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Subscribe to {plan.name}</p>
+          <p className="text-white text-3xl font-black">INR {plan.price}<span className="text-sm font-bold">/month</span></p>
+        </div>
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider mb-1">Card Number</label>
+            <input type="text" placeholder="4242 4242 4242 4242" maxLength={19} value={card.number}
+              onChange={(e) => setCard({ ...card, number: fmt(e.target.value) })} className="input-field !text-base tracking-wider" />
+            <p className="text-xs text-gray-400 mt-0.5">Demo: any card number works</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider mb-1">Expiry</label>
+              <input type="text" placeholder="MM/YY" maxLength={5} value={card.expiry}
+                onChange={(e) => setCard({ ...card, expiry: fmtExp(e.target.value) })} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-xs font-black uppercase tracking-wider mb-1">CVC</label>
+              <input type="password" placeholder="***" maxLength={4} value={card.cvv}
+                onChange={(e) => setCard({ ...card, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })} className="input-field" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider mb-1">Name on Card</label>
+            <input type="text" placeholder="Full name" value={card.name}
+              onChange={(e) => setCard({ ...card, name: e.target.value })} className="input-field" />
+          </div>
+          <button onClick={pay} disabled={processing} className="w-full py-3 font-black uppercase tracking-wider text-sm cursor-pointer transition-all"
+            style={{ background: processing ? "#4b45c7" : "#635BFF", color: "#fff", border: "3px solid #1a1a1a",
+              boxShadow: processing ? "0 0 0 #1a1a1a" : "4px 4px 0 #1a1a1a", transform: processing ? "translate(2px,2px)" : "none" }}>
+            {processing ? (<span className="flex items-center justify-center gap-2">
+              <span className="inline-block animate-bounce-brutal">.</span>
+              <span className="inline-block animate-bounce-brutal" style={{ animationDelay: "0.1s" }}>.</span>
+              <span className="inline-block animate-bounce-brutal" style={{ animationDelay: "0.2s" }}>.</span>
+              <span className="ml-2">Processing...</span>
+            </span>) : `Subscribe INR ${plan.price}/mo`}
+          </button>
+          <p className="text-center text-xs text-gray-400">Powered by <strong>Stripe</strong> — Demo Mode</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [form, setForm] = useState({ source: "", destination: "", date: "" });
+  const [subModal, setSubModal] = useState(null);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -171,6 +270,94 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ═══ SUBSCRIPTION PLANS ═══ */}
+      <section className="py-16 px-6" style={{ background: "#635BFF", borderTop: "3px solid #1a1a1a", borderBottom: "3px solid #1a1a1a" }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10 animate-fade-up">
+            <div className="inline-block px-3 py-1 text-xs font-black uppercase tracking-widest mb-3"
+              style={{ background: "#ffe156", border: "2px solid #1a1a1a", boxShadow: "2px 2px 0 #1a1a1a" }}>
+              Powered by Stripe
+            </div>
+            <h2 className="text-4xl font-black text-white mb-2">CHOOSE YOUR PLAN</h2>
+            <p className="text-white/80 max-w-md mx-auto">Unlock premium features and save even more. Cancel anytime.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              {
+                name: "Free",
+                price: 0,
+                bg: "#ffffff",
+                features: ["5 rides / month", "Basic matching", "Cash payment", "Standard support"],
+                cta: "Current Plan",
+                disabled: true,
+              },
+              {
+                name: "Pro",
+                price: 299,
+                bg: "#ffe156",
+                popular: true,
+                features: ["Unlimited rides", "Smart AI matching", "Priority booking", "2x token rewards", "24/7 support"],
+                cta: "Subscribe Now",
+                disabled: false,
+              },
+              {
+                name: "Business",
+                price: 999,
+                bg: "#b8f3b0",
+                features: ["Everything in Pro", "Team dashboard", "Corporate billing", "Dedicated manager", "Custom routes", "API access"],
+                cta: "Subscribe Now",
+                disabled: false,
+              },
+            ].map((plan, i) => (
+              <div key={plan.name} className="animate-fade-up relative"
+                style={{ animationDelay: `${i * 0.1}s` }}>
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1 text-xs font-black uppercase tracking-widest"
+                    style={{ background: "#ff8fab", border: "2px solid #1a1a1a", boxShadow: "2px 2px 0 #1a1a1a" }}>
+                    Most Popular
+                  </div>
+                )}
+                <div className="p-6 h-full flex flex-col"
+                  style={{
+                    background: plan.bg,
+                    border: "3px solid #1a1a1a",
+                    boxShadow: plan.popular ? "8px 8px 0 #1a1a1a" : "6px 6px 0 #1a1a1a",
+                    transform: plan.popular ? "scale(1.03)" : "none",
+                  }}>
+                  <h3 className="text-xl font-black uppercase mb-1">{plan.name}</h3>
+                  <div className="mb-5">
+                    <span className="text-4xl font-black">{plan.price === 0 ? "Free" : `INR ${plan.price}`}</span>
+                    {plan.price > 0 && <span className="text-sm font-bold text-gray-600">/month</span>}
+                  </div>
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm">
+                        <span className="font-black text-green-700 mt-0.5">+</span>
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => !plan.disabled && setSubModal(plan)}
+                    disabled={plan.disabled}
+                    className="w-full py-3 font-black uppercase tracking-wider text-sm cursor-pointer transition-all"
+                    style={{
+                      background: plan.disabled ? "#e5e5e5" : "#1a1a1a",
+                      color: plan.disabled ? "#999" : "#ffe156",
+                      border: "3px solid #1a1a1a",
+                      boxShadow: plan.disabled ? "0 0 0 transparent" : "4px 4px 0 rgba(0,0,0,0.3)",
+                      cursor: plan.disabled ? "default" : "pointer",
+                    }}>
+                    {plan.cta}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ═══ TESTIMONIALS ═══ */}
       <section className="py-16 px-6" style={{ background: "#a0d2ff", borderTop: "3px solid #1a1a1a", borderBottom: "3px solid #1a1a1a" }}>
         <div className="max-w-5xl mx-auto">
@@ -193,7 +380,7 @@ const LandingPage = () => {
                 </div>
                 <p className="text-sm leading-relaxed mb-3">"{t.text}"</p>
                 <div className="flex gap-1">
-                  {Array(t.stars).fill(null).map((_,j) => <span key={j} style={{ color: "#ffe156", textShadow: "0 0 0 #1a1a1a", fontSize: 18 }}>★</span>)}
+                  {Array(t.stars).fill(null).map((_,j) => <span key={j} className="font-black" style={{ color: "#ffe156", WebkitTextStroke: "1px #1a1a1a", fontSize: 18 }}>*</span>)}
                 </div>
               </div>
             ))}
@@ -280,6 +467,9 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Subscription Payment Modal */}
+      {subModal && <SubPayModal plan={subModal} onClose={() => setSubModal(null)} />}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/layout/Navbar.jsx";
+import LocationPicker from "../../components/shared/LocationPicker.jsx";
 import useRideStore from "../../store/useRideStore.js";
 import useToastStore from "../../store/useToastStore.js";
 
@@ -9,9 +10,11 @@ const PostRide = () => {
   const { addToast } = useToastStore();
   const navigate = useNavigate();
   const [msg, setMsg] = useState("");
+  const [sourceLocation, setSourceLocation] = useState(null);
+  const [destLocation, setDestLocation] = useState(null);
   const [form, setForm] = useState({
-    sourceName: "", sourceAddress: "", sourceLat: "", sourceLng: "",
-    destinationName: "", destinationAddress: "", destinationLat: "", destinationLng: "",
+    sourceName: "", sourceAddress: "",
+    destinationName: "", destinationAddress: "",
     departureTime: "", totalSeats: "3", pricePerSeat: "", distanceKm: "", description: "",
   });
 
@@ -19,8 +22,19 @@ const PostRide = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await createRide(form);
-    if (result.success) { addToast("Ride posted successfully", "success"); navigate("/my-rides"); }
+
+    const data = {
+      ...form,
+      sourceName: form.sourceName || (sourceLocation?.name || ""),
+      destinationName: form.destinationName || (destLocation?.name || ""),
+      sourceLat: sourceLocation?.lat || "",
+      sourceLng: sourceLocation?.lng || "",
+      destinationLat: destLocation?.lat || "",
+      destinationLng: destLocation?.lng || "",
+    };
+
+    const result = await createRide(data);
+    if (result.success) { addToast("Ride posted successfully!", "success"); navigate("/my-rides"); }
     else setMsg(result.message);
   };
 
@@ -41,22 +55,44 @@ const PostRide = () => {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="card animate-fade-up">
             <h2 className="font-black uppercase tracking-wider text-sm mb-4" style={{ borderBottom: "2px solid #1a1a1a", paddingBottom: "8px" }}>Source</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><Label>City Name</Label><input name="sourceName" value={form.sourceName} onChange={handleChange} className="input-field" placeholder="Mumbai" required /></div>
-              <div className="col-span-2"><Label>Full Address</Label><input name="sourceAddress" value={form.sourceAddress} onChange={handleChange} className="input-field" placeholder="Dadar Bus Depot, Mumbai" /></div>
-              <div><Label>Latitude</Label><input name="sourceLat" value={form.sourceLat} onChange={handleChange} className="input-field" placeholder="19.0760" required /></div>
-              <div><Label>Longitude</Label><input name="sourceLng" value={form.sourceLng} onChange={handleChange} className="input-field" placeholder="72.8777" required /></div>
+            <div className="mb-3">
+              <Label>City Name</Label>
+              <input name="sourceName" value={form.sourceName} onChange={handleChange} className="input-field" placeholder="Mumbai" required />
             </div>
+            <div className="mb-3">
+              <Label>Full Address</Label>
+              <input name="sourceAddress" value={form.sourceAddress} onChange={handleChange} className="input-field" placeholder="Dadar Bus Depot, Mumbai" />
+            </div>
+            <LocationPicker
+              label="Pick on Map (Optional)"
+              color="#b8f3b0"
+              value={sourceLocation}
+              onChange={(loc) => {
+                setSourceLocation(loc);
+                if (loc.name && !form.sourceName) setForm((f) => ({ ...f, sourceName: loc.name }));
+              }}
+            />
           </div>
 
           <div className="card animate-fade-up-delay">
             <h2 className="font-black uppercase tracking-wider text-sm mb-4" style={{ borderBottom: "2px solid #1a1a1a", paddingBottom: "8px" }}>Destination</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><Label>City Name</Label><input name="destinationName" value={form.destinationName} onChange={handleChange} className="input-field" placeholder="Pune" required /></div>
-              <div className="col-span-2"><Label>Full Address</Label><input name="destinationAddress" value={form.destinationAddress} onChange={handleChange} className="input-field" placeholder="Shivajinagar, Pune" /></div>
-              <div><Label>Latitude</Label><input name="destinationLat" value={form.destinationLat} onChange={handleChange} className="input-field" placeholder="18.5204" required /></div>
-              <div><Label>Longitude</Label><input name="destinationLng" value={form.destinationLng} onChange={handleChange} className="input-field" placeholder="73.8567" required /></div>
+            <div className="mb-3">
+              <Label>City Name</Label>
+              <input name="destinationName" value={form.destinationName} onChange={handleChange} className="input-field" placeholder="Pune" required />
             </div>
+            <div className="mb-3">
+              <Label>Full Address</Label>
+              <input name="destinationAddress" value={form.destinationAddress} onChange={handleChange} className="input-field" placeholder="Shivajinagar, Pune" />
+            </div>
+            <LocationPicker
+              label="Pick on Map (Optional)"
+              color="#ff8fab"
+              value={destLocation}
+              onChange={(loc) => {
+                setDestLocation(loc);
+                if (loc.name && !form.destinationName) setForm((f) => ({ ...f, destinationName: loc.name }));
+              }}
+            />
           </div>
 
           <div className="card animate-fade-up-delay-2">

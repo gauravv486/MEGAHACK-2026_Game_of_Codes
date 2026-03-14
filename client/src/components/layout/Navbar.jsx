@@ -58,6 +58,9 @@ const Navbar = () => {
                   Admin
                 </Link>
               )}
+              <Link to="/rewards" className="text-sm font-bold uppercase tracking-wider hover:bg-orange-200 px-3 py-1 transition-colors flex items-center gap-1">
+                Rewards
+              </Link>
               <button onClick={handleLogout}
                 className="text-sm font-bold uppercase tracking-wider hover:bg-red-200 px-3 py-1 transition-colors cursor-pointer">
                 Logout

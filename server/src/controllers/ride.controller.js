@@ -1,8 +1,9 @@
 import Ride from "../models/Ride.js";
 import DriverProfile from "../models/DriverProfile.js";
+import geocodeCity from "../utils/geocode.js";
 
 // @POST /api/rides/create
-// driver creates a new ride
+// driver creates a new ride — auto-geocodes if no lat/lng
 export const createRide = async (req, res) => {
   try {
     const {
@@ -37,6 +38,37 @@ export const createRide = async (req, res) => {
       });
     }
 
+    // Auto-geocode source if lat/lng not provided
+    let finalSourceLat = sourceLat ? parseFloat(sourceLat) : null;
+    let finalSourceLng = sourceLng ? parseFloat(sourceLng) : null;
+
+    if (!finalSourceLat || !finalSourceLng) {
+      const geo = await geocodeCity(sourceName);
+      if (geo) {
+        finalSourceLat = geo.lat;
+        finalSourceLng = geo.lng;
+      } else {
+        // fallback defaults (India center)
+        finalSourceLat = 20.5937;
+        finalSourceLng = 78.9629;
+      }
+    }
+
+    // Auto-geocode destination if lat/lng not provided
+    let finalDestLat = destinationLat ? parseFloat(destinationLat) : null;
+    let finalDestLng = destinationLng ? parseFloat(destinationLng) : null;
+
+    if (!finalDestLat || !finalDestLng) {
+      const geo = await geocodeCity(destinationName);
+      if (geo) {
+        finalDestLat = geo.lat;
+        finalDestLng = geo.lng;
+      } else {
+        finalDestLat = 20.5937;
+        finalDestLng = 78.9629;
+      }
+    }
+
     // co2 saved estimate: avg car emits 0.21 kg per km, shared with N passengers
     const co2SavedPerPassenger = distanceKm
       ? parseFloat(((0.21 * distanceKm) / totalSeats).toFixed(2))
@@ -49,7 +81,7 @@ export const createRide = async (req, res) => {
         address: sourceAddress || "",
         coordinates: {
           type: "Point",
-          coordinates: [parseFloat(sourceLng), parseFloat(sourceLat)],
+          coordinates: [finalSourceLng, finalSourceLat],
         },
       },
       destination: {
@@ -57,7 +89,7 @@ export const createRide = async (req, res) => {
         address: destinationAddress || "",
         coordinates: {
           type: "Point",
-          coordinates: [parseFloat(destinationLng), parseFloat(destinationLat)],
+          coordinates: [finalDestLng, finalDestLat],
         },
       },
       departureTime,
@@ -83,8 +115,6 @@ export const createRide = async (req, res) => {
 };
 
 // @GET /api/rides/search
-// passenger searches for rides
-// query params: sourceName, destinationName, date, seats, minPrice, maxPrice
 export const searchRides = async (req, res) => {
   try {
     const {
@@ -118,7 +148,6 @@ export const searchRides = async (req, res) => {
       endOfDay.setHours(23, 59, 59, 999);
       filter.departureTime = { $gte: startOfDay, $lte: endOfDay };
     } else {
-      // default: only show future rides
       filter.departureTime = { $gte: new Date() };
     }
 
@@ -155,7 +184,6 @@ export const searchRides = async (req, res) => {
 };
 
 // @GET /api/rides/:id
-// get single ride details
 export const getRideById = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id).populate(
@@ -175,8 +203,7 @@ export const getRideById = async (req, res) => {
   }
 };
 
-// @GET /api/rides/my-rides
-// driver gets all rides they posted
+// @GET /api/rides/driver/my-rides
 export const getMyRides = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
@@ -206,7 +233,6 @@ export const getMyRides = async (req, res) => {
 };
 
 // @PUT /api/rides/:id/cancel
-// driver cancels their own ride
 export const cancelRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id);
@@ -243,7 +269,6 @@ export const cancelRide = async (req, res) => {
 };
 
 // @PUT /api/rides/:id/update
-// driver updates ride details before it starts
 export const updateRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id);

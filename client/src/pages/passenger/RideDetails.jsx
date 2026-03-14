@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet
 import L from "leaflet";
 import Navbar from "../../components/layout/Navbar.jsx";
 import Spinner from "../../components/shared/Spinner.jsx";
+import PaymentModal from "../../components/shared/PaymentModal.jsx";
 import useRideStore from "../../store/useRideStore.js";
 import useAuthStore from "../../store/useAuthStore.js";
 import useToastStore from "../../store/useToastStore.js";
@@ -28,6 +29,8 @@ const RideDetails = () => {
   const { addToast } = useToastStore();
   const [seats, setSeats] = useState(1);
   const [booking, setBooking] = useState(false);
+  const [showPayment, setShowPayment] = useState(null);
+  const [bookingDone, setBookingDone] = useState(false);
 
   useEffect(() => { getRideById(id); }, [id]);
 
@@ -35,11 +38,18 @@ const RideDetails = () => {
     if (!user) return navigate("/login");
     setBooking(true);
     try {
-      await api.post("/bookings/create", { rideId: id, seatsBooked: seats, paymentMethod: "cash" });
-      addToast("Ride booked! Waiting for driver confirmation.", "success");
+      const res = await api.post("/bookings/create", { rideId: id, seatsBooked: seats, paymentMethod: "online" });
+      addToast("Ride booked and confirmed!", "success");
+      setShowPayment({
+        bookingId: res.data.booking._id,
+        amount: res.data.booking.totalPrice,
+      });
     } catch (err) { addToast(err.response?.data?.message || "Booking failed.", "error"); }
     finally { setBooking(false); }
   };
+
+  const handlePaymentSuccess = () => { setBookingDone(true); };
+  const handlePaymentClose = () => { setShowPayment(null); if (bookingDone) navigate("/my-bookings"); };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Spinner size="lg" /></div>;
   if (!currentRide) return <div className="min-h-screen flex items-center justify-center"><p className="font-black text-gray-400">Ride not found.</p></div>;
@@ -130,9 +140,23 @@ const RideDetails = () => {
           </div>
         )}
 
-        {user?.role === "passenger" && ride.status === "scheduled" && (
+        {/* Tokens info */}
+        {ride.distanceKm > 0 && (
+          <div className="card-green mb-4 p-4 animate-fade-up-delay-3" style={{ border: "3px solid #1a1a1a", boxShadow: "4px 4px 0 #1a1a1a" }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 flex items-center justify-center font-black text-sm"
+                style={{ background: "#fff", border: "2px solid #1a1a1a", boxShadow: "2px 2px 0 #1a1a1a" }}>T</div>
+              <div>
+                <p className="font-black text-sm">Earn {Math.max(1, Math.floor(ride.distanceKm / 10))} tokens for this ride!</p>
+                <p className="text-xs text-gray-600">Collect 500 tokens to redeem INR 200 coupon</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {user?.role === "passenger" && ride.status === "scheduled" && ride.availableSeats > 0 && (
           <div className="card-yellow p-6 animate-fade-up-delay-3" style={{ border: "3px solid #1a1a1a", boxShadow: "6px 6px 0 #1a1a1a" }}>
-            <h3 className="font-black uppercase tracking-wider text-sm mb-4">Book Seats</h3>
+            <h3 className="font-black uppercase tracking-wider text-sm mb-4">Book & Pay</h3>
             <div className="flex items-center gap-4 mb-4">
               <label className="text-sm font-bold">Seats</label>
               <select value={seats} onChange={(e) => setSeats(Number(e.target.value))} className="input-field w-20 !py-2">
@@ -141,11 +165,20 @@ const RideDetails = () => {
               <span className="text-sm font-bold">Total: <span className="text-xl font-black">&#8377;{ride.pricePerSeat * seats}</span></span>
             </div>
             <button onClick={handleBook} disabled={booking} className="btn-primary w-full" style={{ background: "#1a1a1a", color: "#ffe156" }}>
-              {booking ? "Booking..." : "Book Now"}
+              {booking ? "Booking..." : `Book & Pay INR ${ride.pricePerSeat * seats}`}
             </button>
           </div>
         )}
       </div>
+
+      {showPayment && (
+        <PaymentModal
+          booking={showPayment.bookingId}
+          amount={showPayment.amount}
+          onClose={handlePaymentClose}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 };

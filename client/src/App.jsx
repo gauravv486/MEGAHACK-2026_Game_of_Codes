@@ -16,6 +16,7 @@ import PostRide from "./pages/driver/PostRide.jsx";
 import MyRides from "./pages/driver/MyRides.jsx";
 import DriverOnboarding from "./pages/driver/DriverOnboarding.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import Rewards from "./pages/Rewards.jsx";
 
 const RootLayout = () => {
   const { getMe, initialized } = useAuthStore();
@@ -61,6 +62,10 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute allowedRoles={["admin"]} />,
         children: [{ path: "/admin", element: <AdminDashboard /> }],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={["passenger", "driver", "admin"]} />,
+        children: [{ path: "/rewards", element: <Rewards /> }],
       },
       {
         path: "*",

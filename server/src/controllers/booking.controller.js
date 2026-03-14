@@ -1,15 +1,16 @@
 import Booking from "../models/Booking.js";
 import Ride from "../models/Ride.js";
 import User from "../models/User.js";
+import { awardTokensForRide } from "./reward.controller.js";
 
 // @POST /api/bookings/create
-// passenger books a ride
+// passenger books a ride — auto-accepted
 export const createBooking = async (req, res) => {
     try {
         const { rideId, seatsBooked, pickupPoint, dropoffPoint, paymentMethod } =
             req.body;
 
-        const ride = await Ride.findById(rideId);
+        const ride = await Ride.findById(rideId).populate("driver", "name phone");
 
         if (!ride) {
             return res
@@ -25,7 +26,7 @@ export const createBooking = async (req, res) => {
         }
 
         // passenger cannot book their own ride
-        if (ride.driver.toString() === req.user._id.toString()) {
+        if (ride.driver._id.toString() === req.user._id.toString()) {
             return res.status(400).json({
                 success: false,
                 message: "You cannot book your own ride.",
@@ -55,26 +56,45 @@ export const createBooking = async (req, res) => {
 
         const totalPrice = ride.pricePerSeat * seatsBooked;
 
+        // Auto-accept the booking
         const booking = await Booking.create({
             ride: rideId,
             passenger: req.user._id,
-            driver: ride.driver,
+            driver: ride.driver._id,
             seatsBooked,
             totalPrice,
             pickupPoint: pickupPoint || { name: ride.source.name },
             dropoffPoint: dropoffPoint || { name: ride.destination.name },
             paymentMethod: paymentMethod || "cash",
+            status: "accepted",
         });
 
-        // reduce available seats immediately on booking request
+        // reduce available seats
         ride.availableSeats -= seatsBooked;
         ride.bookings.push(booking._id);
         await ride.save();
 
+        // Get passenger info to send back
+        const passenger = await User.findById(req.user._id).select("name phone email");
+
         res.status(201).json({
             success: true,
-            message: "Booking request sent. Waiting for driver confirmation.",
-            booking,
+            message: "Ride booked & confirmed!",
+            booking: {
+                ...booking.toObject(),
+                passengerInfo: {
+                    name: passenger.name,
+                    phone: passenger.phone,
+                    email: passenger.email,
+                },
+                rideInfo: {
+                    source: ride.source.name,
+                    destination: ride.destination.name,
+                    departureTime: ride.departureTime,
+                    driverName: ride.driver.name,
+                    driverPhone: ride.driver.phone,
+                },
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -210,6 +230,50 @@ export const cancelBooking = async (req, res) => {
     }
 };
 
+// @PUT /api/bookings/:id/complete
+// driver marks a booking as completed — awards tokens
+export const completeBooking = async (req, res) => {
+    try {
+        const booking = await Booking.findById(req.params.id);
+
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "Booking not found." });
+        }
+
+        if (booking.driver.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: "Access denied." });
+        }
+
+        if (booking.status !== "accepted") {
+            return res.status(400).json({
+                success: false,
+                message: `Can only complete accepted bookings. Current: ${booking.status}`,
+            });
+        }
+
+        booking.status = "completed";
+        await booking.save();
+
+        // Award tokens to both driver and passenger
+        const ride = await Ride.findById(booking.ride);
+        const distanceKm = ride?.distanceKm || 0;
+
+        if (distanceKm > 0) {
+            await awardTokensForRide(booking.driver, ride._id, distanceKm);
+            await awardTokensForRide(booking.passenger, ride._id, distanceKm);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Booking completed! Tokens awarded.",
+            booking,
+            tokensAwarded: Math.max(1, Math.floor(distanceKm / 10)),
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @GET /api/bookings/my-bookings
 // passenger gets all their bookings
 export const getMyBookings = async (req, res) => {
@@ -222,8 +286,8 @@ export const getMyBookings = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const bookings = await Booking.find(filter)
-            .populate("ride", "source destination departureTime pricePerSeat status vehicle")
-            .populate("driver", "name avatar averageRating trustScore")
+            .populate("ride", "source destination departureTime pricePerSeat status vehicle distanceKm")
+            .populate("driver", "name avatar averageRating trustScore phone")
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
@@ -262,7 +326,7 @@ export const getBookingsForRide = async (req, res) => {
         }
 
         const bookings = await Booking.find({ ride: req.params.rideId })
-            .populate("passenger", "name avatar phone averageRating trustScore")
+            .populate("passenger", "name avatar phone averageRating trustScore email")
             .sort({ createdAt: -1 });
 
         res.status(200).json({ success: true, bookings });

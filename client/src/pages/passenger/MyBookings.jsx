@@ -52,6 +52,9 @@ const MyBookings = () => {
                         {b.ride?.source?.name} &rarr; {b.ride?.destination?.name}
                       </p>
                       <span className={`badge ${statusBadge[b.status] || "badge-gray"}`}>{b.status}</span>
+                      <span className={`badge ${b.paymentStatus === "paid" ? "badge-green" : "badge-yellow"}`}>
+                        {b.paymentStatus === "paid" ? "Paid" : "Unpaid"}
+                      </span>
                     </div>
                     <p className="text-sm text-gray-500">{b.ride?.departureTime ? new Date(b.ride.departureTime).toLocaleString("en-IN") : ""}</p>
                     <p className="text-sm text-gray-600 mt-1 font-bold">{b.seatsBooked} seat{b.seatsBooked > 1 ? "s" : ""} / INR {b.totalPrice} / {b.paymentMethod}</p>
@@ -69,6 +72,15 @@ const MyBookings = () => {
                       {b.driver?.name?.charAt(0).toUpperCase()}
                     </div>
                     <p className="text-sm font-bold">{b.driver?.name}</p>
+                    {b.driver?.phone && <p className="text-xs text-gray-400">Ph: {b.driver.phone}</p>}
+                  </div>
+                )}
+                {/* Tokens earned info for completed rides */}
+                {b.status === "completed" && b.ride?.distanceKm > 0 && (
+                  <div className="mt-2 pt-2 flex items-center gap-2" style={{ borderTop: "1px dashed #ccc" }}>
+                    <div className="w-6 h-6 flex items-center justify-center font-black text-xs"
+                      style={{ background: "#ffe156", border: "2px solid #1a1a1a" }}>T</div>
+                    <p className="text-xs font-bold text-gray-500">Earned {Math.max(1, Math.floor(b.ride.distanceKm / 10))} tokens for this ride</p>
                   </div>
                 )}
               </div>

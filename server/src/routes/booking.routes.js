@@ -4,6 +4,7 @@ import {
     acceptBooking,
     rejectBooking,
     cancelBooking,
+    completeBooking,
     getMyBookings,
     getBookingsForRide,
     rateDriver,
@@ -25,6 +26,7 @@ router.put("/:id/rate-driver", restrictTo("passenger"), rateDriver);
 // driver routes
 router.put("/:id/accept", restrictTo("driver"), acceptBooking);
 router.put("/:id/reject", restrictTo("driver"), rejectBooking);
+router.put("/:id/complete", restrictTo("driver"), completeBooking);
 router.get("/ride/:rideId", restrictTo("driver"), getBookingsForRide);
 router.put("/:id/rate-passenger", restrictTo("driver"), ratePassenger);
 
