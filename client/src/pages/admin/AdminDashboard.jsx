@@ -4,7 +4,7 @@ import Spinner from "../../components/shared/Spinner.jsx";
 import useToastStore from "../../store/useToastStore.js";
 import api from "../../api/axios.js";
 
-const TABS = ["overview", "rides", "users", "drivers", "routes", "fraud"];
+const TABS = ["overview", "rides", "users", "drivers", "routes", "fraud", "sos"];
 const statusBadge = { scheduled: "badge-green", ongoing: "badge-yellow", completed: "badge-gray", cancelled: "badge-red" };
 
 const AdminDashboard = () => {
@@ -22,6 +22,7 @@ const AdminDashboard = () => {
   const [trustInput, setTrustInput] = useState({ score: "", reason: "" });
   const [verifyModal, setVerifyModal] = useState(null);
   const [verifyInput, setVerifyInput] = useState({ status: "verified", note: "" });
+  const [sosAlerts, setSosAlerts] = useState([]);
   const { addToast } = useToastStore();
 
   const fetchDashboard = async () => {
@@ -37,8 +38,9 @@ const AdminDashboard = () => {
     try { const r = await api.get("/admin/rides", { params: { limit: 15, ...(status ? { status } : {}) } }); setRides(r.data.rides); setRideMeta({ total: r.data.total }); } catch(e){console.error(e)}
   };
   const fetchDrivers = async () => { try { const r = await api.get("/admin/users?role=driver&limit=50"); setDrivers(r.data.users); } catch(e){} };
+  const fetchSOS = async () => { try { const r = await api.get("/sos"); setSosAlerts(r.data.alerts || []); } catch(e){console.error(e)} };
 
-  useEffect(() => { fetchDashboard(); fetchRides(); fetchDrivers(); }, []);
+  useEffect(() => { fetchDashboard(); fetchRides(); fetchDrivers(); fetchSOS(); }, []);
 
   const toggleUser = async (id, isActive) => {
     await api.put(isActive ? `/admin/users/${id}/deactivate` : `/admin/users/${id}/activate`);
@@ -74,14 +76,15 @@ const AdminDashboard = () => {
 
         <div className="flex gap-2 mb-8 flex-wrap animate-fade-up">
           {TABS.map((t) => (
-            <button key={t} onClick={() => { setTab(t); if(t==="rides")fetchRides(); if(t==="drivers")fetchDrivers(); }}
+            <button key={t} onClick={() => { setTab(t); if(t==="rides")fetchRides(); if(t==="drivers")fetchDrivers(); if(t==="sos")fetchSOS(); }}
               className="px-4 py-2 text-xs font-black uppercase tracking-widest cursor-pointer transition-all"
               style={{
-                background: tab === t ? "#ffe156" : "#fff",
+                background: tab === t ? "#ffe156" : (t === "sos" && sosAlerts.filter(a=>a.status==="active").length > 0) ? "#ff4444" : "#fff",
+                color: (t === "sos" && tab !== t && sosAlerts.filter(a=>a.status==="active").length > 0) ? "#fff" : "#1a1a1a",
                 border: "2px solid #1a1a1a",
                 boxShadow: tab === t ? "4px 4px 0 #1a1a1a" : "2px 2px 0 #1a1a1a",
                 transform: tab === t ? "translate(-1px,-1px)" : "none",
-              }}>{t}</button>
+              }}>{t}{t === "sos" && sosAlerts.filter(a=>a.status==="active").length > 0 ? ` (${sosAlerts.filter(a=>a.status==="active").length})` : ""}</button>
           ))}
         </div>
 
@@ -162,6 +165,107 @@ const AdminDashboard = () => {
                 <td className="py-3 px-4">{r.totalBookings}</td><td className="py-3 px-4">{r.totalRevenue}</td>
                 <td className="py-3 px-4 font-black">INR {r.avgPrice}</td>
               </tr>)}</tbody></table>
+          </div>
+        )}
+
+        {tab === "sos" && (
+          <div className="space-y-4 animate-fade-up">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-black">SOS EMERGENCY ALERTS</h2>
+              <button onClick={fetchSOS} className="btn-outline" style={{ fontSize: "11px", padding: "6px 14px" }}>Refresh</button>
+            </div>
+            {sosAlerts.length === 0 ? (
+              <div className="card p-8 text-center">
+                <p className="text-sm text-gray-500 font-bold">No SOS alerts yet</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {sosAlerts.map((alert) => (
+                  <div
+                    key={alert._id}
+                    style={{
+                      border: "3px solid #1a1a1a",
+                      boxShadow: alert.status === "active" ? "6px 6px 0 #ff4444" : "4px 4px 0 #1a1a1a",
+                      background: alert.status === "active" ? "#fff0f0" : "#f8f8f5",
+                      padding: "20px",
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span
+                            className="badge"
+                            style={{
+                              background: alert.status === "active" ? "#ff4444" : alert.status === "resolved" ? "#b8f3b0" : "#e5e5e5",
+                              color: alert.status === "active" ? "#fff" : "#1a1a1a",
+                            }}
+                          >
+                            {alert.status.toUpperCase()}
+                          </span>
+                          <span className="text-xs text-gray-500 font-bold">
+                            {new Date(alert.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="font-black text-lg">{alert.user?.name || "Unknown"}</p>
+                        <p className="text-sm text-gray-500">{alert.user?.email} | {alert.user?.phone}</p>
+                        <p className="text-sm text-gray-500">Role: <span className="font-bold uppercase">{alert.user?.role}</span></p>
+                        <p className="text-sm font-bold mt-2">{alert.message}</p>
+                        {alert.location?.latitude && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Location: {alert.location.latitude.toFixed(4)}, {alert.location.longitude.toFixed(4)}
+                            {" "}
+                            <a
+                              href={`https://www.google.com/maps?q=${alert.location.latitude},${alert.location.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-black"
+                              style={{ color: "#0066cc", textDecoration: "underline" }}
+                            >
+                              View on Map
+                            </a>
+                          </p>
+                        )}
+                        {alert.resolvedBy && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Resolved by {alert.resolvedBy.name} at {new Date(alert.resolvedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      {alert.status === "active" && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.put(`/sos/${alert._id}/resolve`, { status: "resolved" });
+                                addToast("SOS marked as resolved", "success");
+                                fetchSOS();
+                              } catch { addToast("Failed", "error"); }
+                            }}
+                            className="btn-primary"
+                            style={{ fontSize: "11px", padding: "6px 14px" }}
+                          >
+                            Resolve
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.put(`/sos/${alert._id}/resolve`, { status: "dismissed" });
+                                addToast("SOS dismissed", "info");
+                                fetchSOS();
+                              } catch { addToast("Failed", "error"); }
+                            }}
+                            className="btn-outline"
+                            style={{ fontSize: "11px", padding: "6px 14px" }}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

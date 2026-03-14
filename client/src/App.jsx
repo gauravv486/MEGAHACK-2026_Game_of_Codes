@@ -4,6 +4,7 @@ import useAuthStore from "./store/useAuthStore.js";
 import ProtectedRoute from "./components/shared/ProtectedRoute.jsx";
 import Spinner from "./components/shared/Spinner.jsx";
 import Toast from "./components/shared/Toast.jsx";
+import SOSButton from "./components/shared/SOSButton.jsx";
 
 // pages
 import LandingPage from "./pages/LandingPage.jsx";
@@ -33,6 +34,7 @@ const RootLayout = () => {
   return (
     <>
       <Toast />
+      <SOSButton />
       <Outlet />
     </>
   );

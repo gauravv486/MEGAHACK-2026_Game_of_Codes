@@ -12,6 +12,7 @@ import bookingRoutes from "./src/routes/booking.routes.js";
 import smartRoutes from "./src/routes/smart.routes.js";
 import adminRoutes from "./src/routes/admin.routes.js";
 import rewardRoutes from "./src/routes/reward.routes.js";
+import sosRoutes from "./src/routes/sos.routes.js";
 import paymentRoutes from "./src/routes/payment.routes.js";
 import initSocket from "./src/socket/socket.js";
 
@@ -50,6 +51,7 @@ app.use("/api/smart", smartRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/rewards", rewardRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/sos", sosRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "RideShare API running" });
