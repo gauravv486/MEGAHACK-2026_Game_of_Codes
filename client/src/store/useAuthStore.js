@@ -11,6 +11,10 @@ const useAuthStore = create((set) => ({
         set({ loading: true, error: null });
         try {
             const res = await api.post("/auth/register", data);
+            // Store token for Bearer header fallback
+            if (res.data.accessToken) {
+                localStorage.setItem("accessToken", res.data.accessToken);
+            }
             set({ user: res.data.user, loading: false });
             return { success: true };
         } catch (err) {
@@ -24,6 +28,10 @@ const useAuthStore = create((set) => ({
         set({ loading: true, error: null });
         try {
             const res = await api.post("/auth/login", data);
+            // Store token for Bearer header fallback
+            if (res.data.accessToken) {
+                localStorage.setItem("accessToken", res.data.accessToken);
+            }
             set({ user: res.data.user, loading: false });
             return { success: true, role: res.data.user.role };
         } catch (err) {
@@ -37,6 +45,7 @@ const useAuthStore = create((set) => ({
         try {
             await api.post("/auth/logout");
         } finally {
+            localStorage.removeItem("accessToken");
             set({ user: null });
         }
     },
@@ -47,6 +56,7 @@ const useAuthStore = create((set) => ({
             const res = await api.get("/auth/me");
             set({ user: res.data.user, initialized: true, loading: false });
         } catch {
+            localStorage.removeItem("accessToken");
             set({ user: null, initialized: true, loading: false });
         }
     },

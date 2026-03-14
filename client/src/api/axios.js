@@ -5,6 +5,15 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Attach access token from localStorage as Authorization header (fallback for cookies)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -16,13 +25,18 @@ api.interceptors.response.use(
     ) {
       original._retry = true;
       try {
-        await axios.post(
+        const refreshRes = await axios.post(
           `${import.meta.env.VITE_API_URL}/auth/refresh`,
           {},
           { withCredentials: true }
         );
+        // Store the new access token
+        if (refreshRes.data.accessToken) {
+          localStorage.setItem("accessToken", refreshRes.data.accessToken);
+        }
         return api(original);
       } catch {
+        localStorage.removeItem("accessToken");
         window.location.href = "/login";
       }
     }
